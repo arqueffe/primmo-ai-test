@@ -31,9 +31,9 @@ Les fichiers JSON suivent le format de reponse de l'API Google Cloud Vision (`fu
 
 Developper une API permettant :
 
-1. **D'interroger la base documentaire via un LLM** -- un utilisateur doit pouvoir poser des questions en langage naturel et obtenir des reponses basees sur les documents du dossier.
+1. **D'interroger la base documentaire via un LLM** -- un utilisateur doit pouvoir poser des questions en langage naturel et obtenir des reponses basees sur les documents des dossiers.
 
-2. **D'evaluer le cout et la pertinence des reponses** -- un endpoint ou un outil permettant de mesurer et suivre la qualite et le cout des interactions.
+2. **D'evaluer le cout, latence et la pertinence des reponses** -- un endpoint ou un outil permettant de mesurer et suivre la qualite, le cout et la latence des interactions.
 
 La conception de l'API (endpoints, format des requetes/reponses, architecture) est libre -- c'est au candidat de proposer le design qu'il juge le plus adapte.
 
@@ -41,53 +41,34 @@ La conception de l'API (endpoints, format des requetes/reponses, architecture) e
 
 - Python 3.11+
 - FastAPI
-- LLM : **Claude** (cle API fournie, budget plafonne a ~$5)
+- LLM : **OpenRouter** (clé API fournie, budget plafonné a €20)
 - Toute lib RAG/embedding/vectorstore autorisee
 - Le code doit tourner avec `docker compose up` ou `make run`
 - `README.md` expliquant les choix techniques et d'architecture
 
 ## Regles metier -- verification d'un dossier notarial
 
-L'agent doit connaitre les regles de base qu'un collaborateur d'etude notariale applique lors de la verification d'un dossier de vente. Voici les principales :
+L'agent doit connaitre les regles de base qu'un collaborateur d'etude notariale applique lors de la verification d'un dossier de vente. 
 
-### Pieces d'identite (CNI, passeport)
-- Une CNI francaise est valide **15 ans** pour les majeurs (depuis 2014 ; 10 ans pour les CNI emises avant 2014).
-- La piece d'identite doit etre **en cours de validite** a la date prevue de signature de l'acte authentique.
-- Les **nom, prenom et date de naissance** doivent correspondre exactement aux informations mentionnees dans le compromis de vente.
-### Justificatifs de domicile
-- Le justificatif doit dater de **moins de 3 mois** a la date de la transaction (certaines etudes tolerent 6 mois).
-- L'adresse doit correspondre a celle declaree par la partie dans le compromis.
-- Documents acceptes : facture d'electricite, de gaz, d'eau, de telephone fixe/internet, avis d'imposition, quittance de loyer.
-
-### Diagnostic de Performance Energetique (DPE)
-- Le DPE est **obligatoire** pour toute vente immobiliere.
-- Il doit concerner **le bien objet de la vente** (meme adresse).
-- Il est valide **10 ans** a compter de sa date d'etablissement.
-- La **surface** indiquee dans le DPE doit etre coherente avec celle du compromis.
-
-### Compromis de vente
-- Le compromis identifie les parties (vendeur, acquereur), le bien (adresse, surface, references cadastrales) et le prix.
-- Il contient l'**origine de propriete** (comment le vendeur a acquis le bien).
-- Les informations du compromis servent de **reference** pour verifier la coherence des autres pieces du dossier.
-
-### Verification croisee
+## Verification croisee
 - L'agent doit etre capable de **croiser les informations** entre documents pour detecter d'eventuelles incoherences.
 
 ## Exemples de questions que l'agent doit savoir traiter
 
 *(Ces exemples illustrent le type de questions attendues -- l'agent doit pouvoir repondre a des questions similaires, pas uniquement a celles-ci)*
 
-- Qui sont les acheteurs et les vendeurs ?
+- Dans quel dossier monsieur ... est-il vendeur?
+- Qui sont les acheteurs et les vendeurs sur le dossier ...?
 - Quel est le bien concerne par la transaction de Paris ?
 - Les pieces d'identite sont-elles en ordre ?
 - Le DPE est-il present et correspond-il au bien ?
 - Les justificatifs de domicile sont-ils conformes ?
-- Y a-t-il des incoherences entre les documents d'un meme dossier ?
+- Y a-t-il des incoherences entre les documents du dossier ... ?
 
 ## Criteres d'evaluation
 
 - L'agent repond de facon pertinente sur la base documentaire fournie
-- Le cout et la pertinence des reponses sont mesurables
+- Le cout, la latence et la pertinence des reponses sont mesurables
 - Le code est lisible et bien structure
 - Le projet se lance en une commande
 - Les choix techniques sont documentes dans le README
