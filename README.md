@@ -48,7 +48,7 @@ La conception de l'API (endpoints, format des requetes/reponses, architecture) e
 
 ## Regles metier -- verification d'un dossier notarial
 
-L'agent doit connaitre les regles de base qu'un collaborateur d'etude notariale applique lors de la verification d'un dossier de vente. 
+L'agent doit connaitre les regles de base qu'un collaborateur d'etude notariale applique lors de la verification d'un dossier de vente. Les règles ci-dessous sont partielles.
 
 ### 1. Toute information doit être ancrée dans un document au dossier, une déclaration d'une partie, ou un texte de droit
 
@@ -109,9 +109,7 @@ Un collaborateur ne “devine” pas. Ce qui n’est pas certain doit être trai
 
 ## Règles specifiques par type de document les plus fréquents
 
-Voici une version **métier précise**, telle qu’un collaborateur raisonne réellement pour chaque document.
-
----
+Les règles ci-dessous sont partielles.
 
 # ### Pièce d’identité
 
@@ -267,7 +265,7 @@ Voici une version **métier précise**, telle qu’un collaborateur raisonne ré
 - Le cout, la latence et la pertinence des reponses sont mesurables
 - Le code est lisible et bien structure
 - Le projet se lance en une commande
-- Les choix techniques sont documentes dans le README
+- Les choix techniques sont documentes dans le README: y compris une explication des arbitrages réalisés compte tenu des délais impartis, et suggestions pour aller plus loin.
 
 ## Duree
 
