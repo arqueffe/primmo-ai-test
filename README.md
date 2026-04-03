@@ -50,8 +50,63 @@ La conception de l'API (endpoints, format des requetes/reponses, architecture) e
 
 L'agent doit connaitre les regles de base qu'un collaborateur d'etude notariale applique lors de la verification d'un dossier de vente. 
 
-## Verification croisee
-- L'agent doit etre capable de **croiser les informations** entre documents pour detecter d'eventuelles incoherences.
+### 1. Toute information doit être ancrée dans un document au dossier, une déclaration d'une partie, ou un texte de droit
+
+Un collaborateur ne travaille jamais à partir d’hypothèses.
+
+### 2. Le dossier doit être complet à l’étape où il se situe
+
+À chaque étape, tous les éléments requis doivent être présents
+
+### 3. Chaque document doit être valide en lui-même
+
+Avant même de croiser les documents :
+- document officiel
+- à jour
+- lisible
+- complet
+
+### 4. Les informations clés doivent être parfaitement cohérentes partout
+
+Le collaborateur passe son temps à croiser :
+
+- identités
+- bien
+- montants
+- dates
+
+### 5. Le vendeur doit pouvoir juridiquement vendre
+
+Vérification centrale.
+
+- titulaire des droits
+- nature des droits correcte
+- absence de blocage (indivision, usufruit…)
+
+### 6. Le bien doit être défini de manière unique et stable
+un seul bien
+une seule définition
+aucune ambiguïté
+
+### 7. Les obligations réglementaires sont non négociables
+diagnostics
+urbanisme
+obligations légales
+
+### 8. La chronologie doit être logique
+compromis avant acte
+conditions levées avant signature
+documents valides au bon moment
+
+### 9. Les montants doivent s’équilibrer
+prix
+financement
+frais
+
+### 10. Le doute doit être explicitement traité
+
+Un collaborateur ne “devine” pas. Ce qui n’est pas certain doit être traité comme un risque
+
 
 ## Exemples de questions que l'agent doit savoir traiter
 
