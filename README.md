@@ -107,6 +107,147 @@ frais
 
 Un collaborateur ne “devine” pas. Ce qui n’est pas certain doit être traité comme un risque
 
+## Règles specifiques par type de document les plus fréquents
+
+Voici une version **métier précise**, telle qu’un collaborateur raisonne réellement pour chaque document.
+
+---
+
+# ### Pièce d’identité
+
+## Vérifications de validité
+
+* Document officiel accepté (CNI, passeport, titre de séjour)
+* Non expiré *(tolérance parfois sur CNI française prolongée, mais à vérifier)*
+* Lisible (photo, numéro, dates)
+* Correspond à la personne (nom, prénom, date de naissance)
+
+## Quand requis
+
+* Toujours, pour **toutes les parties**
+* À chaque entrée dans le dossier (on ne réutilise pas aveuglément une ancienne)
+
+---
+
+# ### Justificatif de domicile
+
+## Vérifications de validité
+
+* Date récente (≤ 3 mois en pratique)
+* Type acceptable (facture énergie, quittance, attestation…)
+* Nom cohérent avec la pièce d’identité
+* Adresse exploitable (pas tronquée, pas ambiguë)
+
+## Quand requis
+
+* Toujours pour les parties (LCB-FT / connaissance client)
+* Re-demandé si dossier long ou doute sur actualité
+
+---
+
+# ### Compromis ou promesse de vente
+
+## Vérifications de validité
+
+* Identité des parties complète
+* Désignation du bien précise
+* Prix clairement défini
+* Conditions suspensives présentes (notamment prêt)
+* Signatures présentes
+
+## Quand requis
+
+* Dès qu’une vente est engagée (avant acte)
+* Sert de **référence centrale** jusqu’à l’acte
+
+---
+
+# ### Titre de propriété
+
+## Vérifications de validité
+
+* Acte authentique identifiable
+* Désignation du bien claire
+* Titulaire des droits identifié
+* Droits correctement qualifiés (pleine propriété, usufruit…)
+
+## Quand requis
+
+* Toujours côté vendeur
+* Base de toute vérification de propriété
+
+---
+
+# ### Diagnostics techniques
+
+## Vérifications de validité
+
+* Présence des diagnostics requis (DPE, amiante, plomb, etc. en fonction de l'age de l'immeuble et de sa localisation)
+* Dates de validité respectées (variables selon le diagnostic et ses conclusions)
+* Rapport complet
+* Correspondance avec le bien (adresse, type) et tous ses lots (cave, parking)
+* Présence des attestations sur l'honneur, polices d'assurance et certifcat de compétence valide à la date de réalisation du diagnostic pour chaque diagnostiqueur intervenant dans la réalisation des diagnostics
+
+## Quand requis
+
+* Avant signature de l’acte (souvent dès compromis)
+* Obligatoire selon type de bien / situation
+
+---
+
+# ### État hypothécaire
+
+## Vérifications de validité
+
+* Document récent
+* Liste des inscriptions (hypothèques, privilèges) et des mutations relatives au bien
+* Correspondance avec le bien
+
+## Quand requis
+
+* Avant acte de vente
+* Indispensable pour vérifier :
+
+  * absence de charges bloquantes
+  * montants à purger
+  * origine de propriété
+
+---
+
+# ### Règlement de copropriété
+
+## Vérifications de validité
+
+* Document complet
+* Identification des lots
+* Description des parties communes / privatives
+* Cohérence avec le bien vendu
+
+## Quand requis
+
+* Si bien en copropriété
+* Nécessaire pour comprendre :
+
+  * droits attachés au lot
+  * charges / règles applicables
+
+---
+
+# ### Acte de vente (acte authentique)
+
+## Vérifications de validité
+
+* Reprise fidèle des éléments du compromis
+* Identité des parties
+* Désignation du bien
+* Prix et financement
+* Mentions obligatoires
+* Signatures
+
+## Quand requis
+
+* Étape finale
+* Formalise juridiquement le transfert de propriété
 
 ## Exemples de questions que l'agent doit savoir traiter
 
