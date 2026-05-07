@@ -69,4 +69,4 @@ La conception de l'API (endpoints, format des requetes/reponses, architecture) e
 
 ## Duree
 
-Pour discussion 4-5 jours après réception du test.
+Pour discussion 4 jours après réception du test. Envoyer un clone de ce repo avec tes travaux, au moins 24h avant notre discussion.
