@@ -41,7 +41,7 @@ La conception de l'API (endpoints, format des requetes/reponses, architecture) e
 
 - Python 3.11+
 - FastAPI
-- LLM : **OpenRouter** (clé API fournie, budget plafonné a €20)
+- LLM : Au choix
 - Toute lib RAG/embedding/vectorstore autorisee
 - Le code doit tourner avec `docker compose up` ou `make run`
 - `README.md` expliquant les choix techniques et d'architecture
@@ -54,10 +54,12 @@ La conception de l'API (endpoints, format des requetes/reponses, architecture) e
 - Dans quel dossier monsieur ... est-il vendeur?
 - Qui sont les acheteurs et les vendeurs sur le dossier ...?
 - Quel est le bien concerne par la transaction de Paris ?
-- Les pieces d'identite sont-elles en ordre ?
-- Le DPE est-il present et correspond-il au bien ?
-- Les justificatifs de domicile sont-ils conformes ?
-- Y a-t-il des incoherences entre les documents du dossier ... ?
+- Les pieces d'identite sont-elles en ordre dans le dossier [1/2/3] ?
+- Dans le dossier [1/2/3], Le DPE est-il present et correspond-il au bien ?
+- Les justificatifs de domicile sont-ils conformes dans le dossier [1/2/3] ?
+- Y a-t-il des incoherences entre les documents du dossier [1/2/3] ?
+- Y a-t-il des incohérences dans les informations relatives aux parties du dossier [1/2/3]?
+- Fais un resume des pieces manquantes dans chacun des dossier
 
 ## Criteres d'evaluation
 
