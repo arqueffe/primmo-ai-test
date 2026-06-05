@@ -1,0 +1,3 @@
+[submodule "kg-gen"]
+	path = kg-gen
+	url = https://github.com/stair-lab/kg-gen.git
