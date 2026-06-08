@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from fastapi import UploadFile
 
 from app.services.graph_builder import GraphBuilder
+from app.services.document_store import DocumentStore
 from app.services.graph_store import GraphStore
 from app.services.ocr_extractor import OCRExtractor
 
@@ -26,15 +27,26 @@ class Ingestor:
         self.job_store = {}
 
     async def submit(
-        self, file: UploadFile, dossier_id: str, graph_store: GraphStore, kg: KGGen
+        self,
+        file: UploadFile,
+        dossier_id: str,
+        graph_store: GraphStore,
+        document_store: DocumentStore,
+        kg: KGGen,
     ) -> IngestJobResponse:
         job_id = uuid.uuid4().hex
         self.job_store[job_id] = IngestJobResponse(
             job_id=job_id, status=JobStatus.IN_PROGRESS
         )
-        # Parse the document, potential failure from bad OCR document
+        # Persist uploaded source document for reload across server restarts.
         try:
-            parsed_document = OCRExtractor.extract_text_from_ocr(file, dossier_id)
+            saved_path = document_store.save_upload(file=file, dossier_id=dossier_id)
+        except Exception as e:
+            return self.fail_job(job_id, f"Error saving uploaded document: {e}")
+
+        # Parse the document, potential failure from bad OCR document.
+        try:
+            parsed_document = OCRExtractor.extract_text_from_file(saved_path, dossier_id)
         except Exception as e:
             return self.fail_job(job_id, f"Error extracting text from OCR: {e}")
         # Build the graph from the document, potential failure from API call or more
@@ -42,16 +54,14 @@ class Ingestor:
             document_graph = await GraphBuilder.build_graph(parsed_document, kg)
         except Exception as e:
             return self.fail_job(job_id, f"Error building graph: {e}")
-        # Recover the graph
-        current_graph = graph_store.graph
-        if current_graph is None:
-            graph_store.update_graph(document_graph)
-        else:
-            # Aggregate the graphs
-            aggregated_graph = await GraphBuilder.aggregate_graphs(
-                [current_graph, document_graph], kg
-            )
-            graph_store.update_graph(aggregated_graph)
+
+        # Update per-dossier graph first, then refresh global cross-dossier view.
+        graph_store.update_dossier_graph(
+            dossier_id=dossier_id,
+            document_graph=document_graph,
+            kg=kg,
+        )
+        graph_store.rebuild_global_graph(kg)
         return self.complete_job(job_id)
 
     def fail_job(self, job_id: str, error_message: str):

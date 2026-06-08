@@ -16,8 +16,15 @@ async def create_ingest_job(
     dossier_id: Annotated[str, Form(...)],
 ) -> IngestJobResponse:
     graph_store = request.app.state.graph_store
+    document_store = request.app.state.document_store
     kg = request.app.state.kg
-    job = await ingestor.submit(file=file, dossier_id=dossier_id, graph_store=graph_store, kg=kg)
+    job = await ingestor.submit(
+        file=file,
+        dossier_id=dossier_id,
+        graph_store=graph_store,
+        document_store=document_store,
+        kg=kg,
+    )
     return IngestJobResponse(job_id=job.job_id, status=job.status)
     
 @router.get("/status/{job_id}")

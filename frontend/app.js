@@ -23,8 +23,10 @@ const chatTimeline = document.getElementById("chatTimeline");
 const chatForm = document.getElementById("chatForm");
 const chatQuestion = document.getElementById("chatQuestion");
 const refreshDossiersBtn = document.getElementById("refreshDossiers");
+const graphDossierSelect = document.getElementById("graphDossierSelect");
 const graphSearch = document.getElementById("graphSearch");
 const loadGraphBtn = document.getElementById("loadGraph");
+const graphLegend = document.getElementById("graphLegend");
 const graphCanvas = document.getElementById("graphCanvas");
 const graphDetails = document.getElementById("graphDetails");
 const refreshMetricsBtn = document.getElementById("refreshMetrics");
@@ -43,12 +45,32 @@ const costChart = document.getElementById("costChart");
 const strategyChart = document.getElementById("strategyChart");
 const tokenChart = document.getElementById("tokenChart");
 
+const DOSSIER_NODE_COLORS = [
+  "#2563eb",
+  "#0f766e",
+  "#9f1239",
+  "#d97706",
+  "#6d28d9",
+  "#0e7490",
+  "#b45309",
+  "#be123c",
+];
+
+const MULTI_DOSSIER_NODE_COLOR = "#111827";
+
 function setStatus(el, text) {
   el.textContent = text;
 }
 
 function currentDossierId() {
   return globalDossierSelect.value || undefined;
+}
+
+function currentGraphDossierId() {
+  if (!graphDossierSelect) {
+    return currentDossierId();
+  }
+  return graphDossierSelect.value || undefined;
 }
 
 function formatCurrency(value) {
@@ -143,21 +165,36 @@ function setActiveTab(tabName) {
   Object.entries(tabPanels).forEach(([name, panel]) => {
     panel.classList.toggle("active", name === tabName);
   });
+
+  if (tabName === "graph") {
+    loadGraph();
+  }
 }
 
 function renderDossierOptions() {
-  const current = globalDossierSelect.value;
-  globalDossierSelect.innerHTML = `<option value="">All dossiers</option>`;
+  const currentGlobal = globalDossierSelect.value;
+  const currentGraph = graphDossierSelect ? graphDossierSelect.value : "";
 
-  state.dossiers.forEach(item => {
-    const option = document.createElement("option");
-    option.value = String(item.id);
-    option.textContent = `Dossier ${item.id}`;
-    globalDossierSelect.appendChild(option);
-  });
+  const fill = (selectEl, selectedValue) => {
+    if (!selectEl) return;
+    selectEl.innerHTML = `<option value="">All dossiers</option>`;
+    state.dossiers.forEach(item => {
+      const option = document.createElement("option");
+      option.value = String(item.id);
+      option.textContent = `Dossier ${item.id}`;
+      selectEl.appendChild(option);
+    });
 
-  if (current && state.dossiers.some(d => String(d.id) === current)) {
-    globalDossierSelect.value = current;
+    if (selectedValue && state.dossiers.some(d => String(d.id) === selectedValue)) {
+      selectEl.value = selectedValue;
+    }
+  };
+
+  fill(globalDossierSelect, currentGlobal);
+  fill(graphDossierSelect, currentGraph);
+
+  if (graphDossierSelect && !graphDossierSelect.value && globalDossierSelect.value) {
+    graphDossierSelect.value = globalDossierSelect.value;
   }
 }
 
@@ -287,6 +324,16 @@ function normalizeGraph(raw) {
     return { nodes: [], links: [] };
   }
 
+  const normalizeDossierValues = value => {
+    if (Array.isArray(value)) {
+      return value.map(String).filter(Boolean);
+    }
+    if (value === null || value === undefined) {
+      return [];
+    }
+    return [String(value)];
+  };
+
   const toNode = value => {
     if (value === null || value === undefined) {
       return null;
@@ -321,11 +368,21 @@ function normalizeGraph(raw) {
   const hasEntities = Array.isArray(raw.entities);
   const hasRelations = Array.isArray(raw.relations);
   if (hasEntities || hasRelations) {
+    const entityMetadata = raw.entity_metadata && typeof raw.entity_metadata === "object"
+      ? raw.entity_metadata
+      : {};
+
     (raw.entities || []).forEach(entity => {
       const id = ensureNode(entity);
       if (id) {
         const existing = nodeMap.get(id);
-        nodeMap.set(id, { ...existing, type: existing.type || "Entity" });
+        const dossiers = normalizeDossierValues(entityMetadata[id]);
+        nodeMap.set(id, {
+          ...existing,
+          type: existing.type || "Entity",
+          dossiers,
+          dossier_id: dossiers.length === 1 ? dossiers[0] : undefined,
+        });
       }
     });
 
@@ -357,6 +414,19 @@ function normalizeGraph(raw) {
   }
 
   (raw.nodes || []).forEach(ensureNode);
+
+  if (raw.entity_metadata && typeof raw.entity_metadata === "object") {
+    Object.entries(raw.entity_metadata).forEach(([entityId, meta]) => {
+      if (!nodeMap.has(entityId)) return;
+      const existing = nodeMap.get(entityId);
+      const dossiers = normalizeDossierValues(meta);
+      nodeMap.set(entityId, {
+        ...existing,
+        dossiers,
+        dossier_id: dossiers.length === 1 ? dossiers[0] : existing?.dossier_id,
+      });
+    });
+  }
 
   let edgeCandidates = [];
   if (Array.isArray(raw.links)) {
@@ -401,6 +471,80 @@ function normalizeGraph(raw) {
   return { nodes: Array.from(nodeMap.values()), links };
 }
 
+function buildDossierColorMap(nodes) {
+  const dossierIds = Array.from(
+    new Set(
+      (nodes || [])
+        .flatMap(node => (Array.isArray(node.dossiers) ? node.dossiers : []))
+        .map(String)
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  const colorMap = {};
+  dossierIds.forEach((dossierId, idx) => {
+    colorMap[dossierId] = DOSSIER_NODE_COLORS[idx % DOSSIER_NODE_COLORS.length];
+  });
+  return colorMap;
+}
+
+function renderGraphLegend(dossierColorMap) {
+  if (!graphLegend) {
+    return;
+  }
+
+  graphLegend.innerHTML = "";
+
+  const title = document.createElement("h3");
+  title.textContent = "Legend";
+  graphLegend.appendChild(title);
+
+  const itemsWrap = document.createElement("div");
+  itemsWrap.className = "legend-items";
+
+  const entries = Object.entries(dossierColorMap || {});
+
+  if (!entries.length) {
+    const note = document.createElement("p");
+    note.className = "muted";
+    note.textContent = "No dossier metadata available in the current graph.";
+    graphLegend.appendChild(note);
+    return;
+  }
+
+  entries.forEach(([dossierId, color]) => {
+    const item = document.createElement("span");
+    item.className = "legend-item";
+
+    const swatch = document.createElement("span");
+    swatch.className = "legend-swatch";
+    swatch.style.backgroundColor = color;
+
+    const text = document.createElement("span");
+    text.textContent = `Dossier ${dossierId}`;
+
+    item.appendChild(swatch);
+    item.appendChild(text);
+    itemsWrap.appendChild(item);
+  });
+
+  const sharedItem = document.createElement("span");
+  sharedItem.className = "legend-item";
+
+  const sharedSwatch = document.createElement("span");
+  sharedSwatch.className = "legend-swatch";
+  sharedSwatch.style.backgroundColor = MULTI_DOSSIER_NODE_COLOR;
+
+  const sharedText = document.createElement("span");
+  sharedText.textContent = "Shared entity (multiple dossiers)";
+
+  sharedItem.appendChild(sharedSwatch);
+  sharedItem.appendChild(sharedText);
+  itemsWrap.appendChild(sharedItem);
+
+  graphLegend.appendChild(itemsWrap);
+}
+
 function renderSelection(label, payload) {
   graphDetails.innerHTML = "";
   const title = document.createElement("h3");
@@ -414,13 +558,18 @@ function renderSelection(label, payload) {
 
 function renderGraph(data) {
   const { nodes, links } = normalizeGraph(data);
-  state.graphData = { nodes, links };
   graphCanvas.innerHTML = "";
 
   if (!nodes.length) {
     graphCanvas.textContent = "No graph nodes returned.";
     return;
   }
+
+  const dossierColorMap = buildDossierColorMap(
+    (state.graphData && Array.isArray(state.graphData.nodes) && state.graphData.nodes.length)
+      ? state.graphData.nodes
+      : nodes
+  );
 
   const width = graphCanvas.clientWidth || 760;
   const height = graphCanvas.clientHeight || 520;
@@ -480,6 +629,12 @@ function renderGraph(data) {
     .attr("fill", d => {
       if (d.inconsistency || d.inconsistencies) {
         return "#b91c1c";
+      }
+      if (Array.isArray(d.dossiers) && d.dossiers.length === 1) {
+        return dossierColorMap[d.dossiers[0]] || "#374151";
+      }
+      if (Array.isArray(d.dossiers) && d.dossiers.length > 1) {
+        return MULTI_DOSSIER_NODE_COLOR;
       }
       const type = (d.type || "").toString().toLowerCase();
       if (type.includes("person")) return "#2563eb";
@@ -571,20 +726,29 @@ function filterGraphBySearch(term) {
 }
 
 async function loadGraph() {
-  const dossierId = currentDossierId();
-  const path = apiPath("/graph/");
+  const dossierId = currentGraphDossierId();
+  let path = apiPath("/graph/");
+  if (dossierId) {
+    path = `${path}?dossier_id=${encodeURIComponent(dossierId)}`;
+  }
 
   try {
     const payload = await request(path);
-    renderGraph(payload);
-    if (dossierId) {
-      renderSelection("Scope Note", {
-        dossier_id: dossierId,
-        note: "Current backend graph endpoint returns the in-memory global graph.",
-      });
-    }
+    const graphSummary = normalizeGraph(payload);
+    state.graphData = graphSummary;
+    renderGraph(graphSummary);
+    const dossierColorMap = buildDossierColorMap(graphSummary.nodes);
+    renderGraphLegend(dossierColorMap);
+    renderSelection("Graph Scope", {
+      dossier_id: dossierId || "all",
+      node_count: graphSummary.nodes.length,
+      relation_count: graphSummary.links.length,
+      dossier_color_legend: dossierColorMap,
+      shared_entity_color: MULTI_DOSSIER_NODE_COLOR,
+    });
   } catch (error) {
     graphCanvas.textContent = `Graph request failed: ${error.message}`;
+    renderGraphLegend({});
   }
 }
 
@@ -883,8 +1047,23 @@ function bindEvents() {
   });
 
   refreshDossiersBtn.addEventListener("click", loadDossiers);
+  globalDossierSelect.addEventListener("change", () => {
+    if (graphDossierSelect) {
+      graphDossierSelect.value = globalDossierSelect.value;
+    }
+    if (tabPanels.graph.classList.contains("active")) {
+      loadGraph();
+    }
+  });
   chatForm.addEventListener("submit", submitQuestion);
   loadGraphBtn.addEventListener("click", loadGraph);
+  if (graphDossierSelect) {
+    graphDossierSelect.addEventListener("change", () => {
+      if (tabPanels.graph.classList.contains("active")) {
+        loadGraph();
+      }
+    });
+  }
   refreshMetricsBtn.addEventListener("click", loadMetrics);
 
   graphSearch.addEventListener("input", event => {

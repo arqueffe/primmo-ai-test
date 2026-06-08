@@ -76,10 +76,16 @@
             <p class="muted">Global graph or per-dossier graph from API endpoints.</p>
           </div>
           <div class="graph-controls">
+            <label for="graphDossierSelect" class="sr-only">Graph dossier scope</label>
+            <select id="graphDossierSelect">
+              <option value="">All dossiers</option>
+            </select>
             <input id="graphSearch" type="search" placeholder="Search nodes" />
             <button id="loadGraph" type="button">Load graph</button>
           </div>
         </div>
+
+        <section id="graphLegend" class="graph-legend" aria-label="Dossier color legend"></section>
 
         <div class="graph-layout">
           <div id="graphCanvas" class="graph-canvas" aria-label="Graph visualization"></div>

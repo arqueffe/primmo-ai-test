@@ -8,7 +8,7 @@ It consumes existing API endpoints when available.
 ## What it includes
 
 - Chat tab wired to `POST /api/v1/query`
-- Knowledge Graph tab wired to `GET /api/v1/graph/` (global in-memory graph)
+- Knowledge Graph tab wired to `GET /api/v1/graph/` with optional `?dossier_id=...` filtering
 - Metrics tab wired to `GET /api/v1/metrics/summary` and `GET /api/v1/metrics/history`
 - Upload drawer wired to `POST /api/v1/ingest/` and polling `GET /api/v1/ingest/status/{job_id}`
 - Dossier selector wired to `GET /api/v1/dossiers/`

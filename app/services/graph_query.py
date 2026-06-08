@@ -6,13 +6,19 @@ from app.services.graph_store import GraphStore
 class GraphQuery:
     
     @staticmethod
-    async def query_graph(query: str, graph_store: GraphStore, kg: KGGen, api_key: str) -> str | None:
-        graph = graph_store.graph
+    async def query_graph(
+        query: str,
+        graph_store: GraphStore,
+        kg: KGGen,
+        api_key: str,
+        dossier_id: str | None = None,
+    ) -> str | None:
+        graph = graph_store.get_graph(dossier_id)
         if graph is None:
             return None
         graph_nx = KGGen.to_nx(graph)
-        node_embeddings, relation_embeddings = kg.generate_embeddings(graph_nx)
-        top_nodes, context, context_text = kg.retrieve(
+        node_embeddings, _ = kg.generate_embeddings(graph_nx)
+        _, _, context_text = kg.retrieve(
             query=query,
             node_embeddings=node_embeddings,
             graph=graph_nx,

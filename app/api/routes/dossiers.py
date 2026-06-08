@@ -1,11 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 router = APIRouter()
 
 @router.get("/")
-def list_dossiers() -> dict[str, list[str]]:
-    # TODO: Implement actual logic to list dossiers and their documents
-    return {
-        "dossier_1": ["doc1.pdf", "doc2.pdf"],
-        "dossier_2": ["doc3.pdf", "doc4.pdf"],
-    }
+def list_dossiers(request: Request) -> list[dict[str, int | str]]:
+    document_store = request.app.state.document_store
+    return document_store.list_dossiers()
