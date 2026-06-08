@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notarial KG-RAG Console</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="bg-shape bg-shape-1" aria-hidden="true"></div>
+  <div class="bg-shape bg-shape-2" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Primmo AI</p>
+      <h1>Notarial KG-RAG Console</h1>
+    </div>
+    <div class="api-config">
+      <label for="apiBaseUrl">API Base URL</label>
+      <input id="apiBaseUrl" type="url" placeholder="http://localhost:8000" />
+      <button id="saveApiBase" type="button">Apply</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel side-panel" aria-label="Workspace controls">
+      <div class="panel-head">
+        <h2>Workspace</h2>
+      </div>
+      <nav class="tabs" aria-label="Main sections">
+        <button class="tab-btn active" data-tab="chat" role="tab" aria-selected="true">Chat</button>
+        <button class="tab-btn" data-tab="graph" role="tab" aria-selected="false">Knowledge Graph</button>
+        <button class="tab-btn" data-tab="metrics" role="tab" aria-selected="false">Metrics</button>
+      </nav>
+
+      <section class="block">
+        <h3>Dossier Scope</h3>
+        <select id="globalDossierSelect">
+          <option value="">All dossiers</option>
+        </select>
+        <button id="refreshDossiers" type="button" class="secondary">Refresh dossiers</button>
+      </section>
+
+      <section class="block">
+        <div class="block-title-row">
+          <h3>Document Ingestion</h3>
+          <button id="openUploadDrawer" type="button" class="secondary">Upload</button>
+        </div>
+        <p class="muted">Triggers real ingestion jobs once backend endpoints are available.</p>
+        <div id="ingestStatus" class="status-box">No ingestion job running.</div>
+      </section>
+    </aside>
+
+    <section class="panel content-panel">
+      <section id="tab-chat" class="tab-panel active" role="tabpanel">
+        <div class="panel-head with-divider">
+          <h2>Conversational Query</h2>
+          <p class="muted">Submit natural language questions against the selected scope.</p>
+        </div>
+
+        <div id="chatTimeline" class="chat-timeline" aria-live="polite"></div>
+
+        <form id="chatForm" class="chat-form">
+          <label for="chatQuestion">Question</label>
+          <textarea id="chatQuestion" rows="3" placeholder="Type your question..."></textarea>
+          <div class="form-actions">
+            <button id="sendQuestion" type="submit">Ask</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="tab-graph" class="tab-panel" role="tabpanel">
+        <div class="panel-head with-divider split">
+          <div>
+            <h2>Knowledge Graph Explorer</h2>
+            <p class="muted">Global graph or per-dossier graph from API endpoints.</p>
+          </div>
+          <div class="graph-controls">
+            <input id="graphSearch" type="search" placeholder="Search nodes" />
+            <button id="loadGraph" type="button">Load graph</button>
+          </div>
+        </div>
+
+        <div class="graph-layout">
+          <div id="graphCanvas" class="graph-canvas" aria-label="Graph visualization"></div>
+          <aside class="node-details" id="graphDetails" aria-label="Graph selection details">
+            <h3>Selection</h3>
+            <p class="muted">Click a node or relation to inspect attributes and source references.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="tab-metrics" class="tab-panel" role="tabpanel">
+        <div class="panel-head with-divider split">
+          <div>
+            <h2>Metrics Dashboard</h2>
+            <p class="muted">Rendered from `/metrics/summary` and `/metrics/history` only.</p>
+          </div>
+          <button id="refreshMetrics" type="button">Refresh metrics</button>
+        </div>
+
+        <div id="metricsCards" class="metrics-cards"></div>
+        <div class="chart-grid">
+          <article class="chart-card">
+            <h3>Latency Over Time</h3>
+            <svg id="latencyChart" viewBox="0 0 600 220" preserveAspectRatio="none"></svg>
+          </article>
+          <article class="chart-card">
+            <h3>Cumulative Cost</h3>
+            <svg id="costChart" viewBox="0 0 600 220" preserveAspectRatio="none"></svg>
+          </article>
+          <article class="chart-card">
+            <h3>Strategy Distribution</h3>
+            <svg id="strategyChart" viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"></svg>
+          </article>
+          <article class="chart-card">
+            <h3>Prompt vs Completion Tokens</h3>
+            <svg id="tokenChart" viewBox="0 0 600 220" preserveAspectRatio="none"></svg>
+          </article>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <aside id="uploadDrawer" class="upload-drawer" aria-hidden="true" aria-label="Document upload drawer">
+    <div class="upload-header">
+      <h2>Upload OCR JSON</h2>
+      <button id="closeUploadDrawer" type="button" class="secondary">Close</button>
+    </div>
+    <form id="uploadForm" class="upload-form">
+      <label for="uploadDossierId">Dossier ID</label>
+      <input id="uploadDossierId" type="text" placeholder="e.g. 1" required />
+
+      <label for="uploadFile">OCR JSON file</label>
+      <input id="uploadFile" type="file" accept="application/json,.json" required />
+
+      <button id="submitUpload" type="submit">Start ingestion</button>
+      <div id="uploadFeedback" class="status-box">Waiting for upload.</div>
+      <div class="progress-track" aria-hidden="true">
+        <div id="uploadProgress" class="progress-fill"></div>
+      </div>
+    </form>
+  </aside>
+
+  <script src="./vendor/d3.min.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
