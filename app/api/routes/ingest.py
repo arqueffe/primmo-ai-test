@@ -17,12 +17,14 @@ async def create_ingest_job(
 ) -> IngestJobResponse:
     graph_store = request.app.state.graph_store
     document_store = request.app.state.document_store
+    metrics_store = request.app.state.metrics_store
     kg = request.app.state.kg
     job = await ingestor.submit(
         file=file,
         dossier_id=dossier_id,
         graph_store=graph_store,
         document_store=document_store,
+        metrics_store=metrics_store,
         kg=kg,
     )
     return IngestJobResponse(job_id=job.job_id, status=job.status)

@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, Request
 
-from app.services.graph_query import GraphQuery
+from app.services.graph_query import CHAT_MODEL, GraphQuery
 
 router = APIRouter()
 
@@ -25,25 +25,43 @@ async def _run_query(
     dossier_id: str | None = None,
 ) -> QueryResponse:
     graph_store = request.app.state.graph_store
+    metrics_store = request.app.state.metrics_store
     kg = request.app.state.kg
     api_key = request.app.state.api_key
-    answer = await GraphQuery.query_graph(
+    result = await GraphQuery.query_graph(
         query=question,
         graph_store=graph_store,
         kg=kg,
         api_key=api_key,
         dossier_id=dossier_id,
     )
-    if answer is None:
+
+    if result is None:
         if dossier_id:
             answer = f"No graph loaded for dossier '{dossier_id}'. Ingest documents first."
         else:
             answer = "No graph loaded yet. Ingest documents first."
+        return QueryResponse(
+            answer=answer,
+            strategy="GRAPH_LOOKUP",
+            sources=[],
+            metrics={},
+            ocr_warnings=[],
+        )
+
+    metrics_store.record_query_execution(
+        question=question,
+        dossier_id=dossier_id,
+        strategy="GRAPH_LOOKUP",
+        model=CHAT_MODEL,
+        metrics=result.metrics,
+    )
+
     return QueryResponse(
-        answer=answer,
+        answer=result.answer,
         strategy="GRAPH_LOOKUP",
         sources=[],
-        metrics={},
+        metrics=result.metrics,
         ocr_warnings=[],
     )
 

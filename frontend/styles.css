@@ -211,6 +211,51 @@ button:hover {
   background: #fff;
 }
 
+.ingested-docs {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.6rem;
+  display: grid;
+  gap: 0.5rem;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.ingested-docs-title {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.ingested-dossier {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfbfb;
+  padding: 0.45rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.ingested-dossier-head {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ingested-file-list {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.ingested-file-list li {
+  font-size: 0.8rem;
+  color: var(--muted);
+  word-break: break-word;
+}
+
 .content-panel {
   min-height: 78vh;
   display: flex;
@@ -335,6 +380,16 @@ button:hover {
   gap: 0.5rem;
 }
 
+.metrics-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.metrics-controls select {
+  min-width: 220px;
+}
+
 .graph-legend {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -421,6 +476,58 @@ button:hover {
 .metric-value {
   font-size: 1.15rem;
   margin-top: 0.3rem;
+}
+
+.operations-panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.operations-panel h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.operations-list {
+  display: grid;
+  gap: 0.42rem;
+  max-height: 210px;
+  overflow: auto;
+}
+
+.operation-row {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfbfb;
+  padding: 0.45rem 0.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.84rem;
+}
+
+.operation-main {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.operation-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.operation-meta {
+  color: var(--muted);
+}
+
+.operation-stats {
+  color: #1f3d7a;
+  white-space: nowrap;
 }
 
 .chart-grid {
@@ -511,5 +618,15 @@ button:hover {
 
   .graph-layout {
     grid-template-columns: 1fr;
+  }
+
+  .metrics-controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .metrics-controls select,
+  .metrics-controls button {
+    width: 100%;
   }
 }

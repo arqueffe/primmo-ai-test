@@ -1,5 +1,6 @@
 from pathlib import Path
 import shutil
+from typing import Any
 
 from fastapi import UploadFile
 
@@ -28,18 +29,22 @@ class DocumentStore:
 
         return target_path
 
-    def list_dossiers(self) -> list[dict[str, int | str]]:
+    def list_dossiers(self) -> list[dict[str, Any]]:
         if not self.root_dir.exists() or not self.root_dir.is_dir():
             return []
 
-        dossiers: list[dict[str, int | str]] = []
+        dossiers: list[dict[str, Any]] = []
         for dossier_dir in sorted(self.root_dir.iterdir(), key=lambda p: p.name):
             if not dossier_dir.is_dir():
                 continue
-            document_count = sum(1 for p in dossier_dir.iterdir() if p.is_file())
+            documents = sorted(
+                [p.name for p in dossier_dir.iterdir() if p.is_file()],
+                key=str.lower,
+            )
             dossiers.append({
                 "id": dossier_dir.name,
-                "document_count": document_count,
+                "document_count": len(documents),
+                "documents": documents,
             })
 
         return dossiers

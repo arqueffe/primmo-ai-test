@@ -8,6 +8,7 @@ from kg_gen.kg_gen import KGGen
 from app.api.router import api_router
 from app.services.document_store import DocumentStore
 from app.services.graph_store import GraphStore
+from app.services.metrics_store import MetricsStore
 from app.core.config import settings
 
 MODEL = "openai/gpt-4o"
@@ -18,10 +19,13 @@ def create_app() -> FastAPI:
     repo_root = Path(__file__).resolve().parents[1]
     uploads_dir = repo_root / settings.uploads_dir
     graph_store_state_file = repo_root / settings.graph_store_state_file
+    metrics_store_state_file = repo_root / settings.metrics_store_state_file
 
     document_store = DocumentStore(root_dir=uploads_dir)
     graph_store = GraphStore(state_file=graph_store_state_file)
     graph_store.load_state()
+    metrics_store = MetricsStore(state_file=metrics_store_state_file)
+    metrics_store.load_state()
 
     kg = KGGen(
         model=MODEL,
@@ -46,6 +50,7 @@ def create_app() -> FastAPI:
     
     app.state.graph_store = graph_store
     app.state.document_store = document_store
+    app.state.metrics_store = metrics_store
     app.state.kg = kg
     app.state.api_key = api_key
     

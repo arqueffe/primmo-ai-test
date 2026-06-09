@@ -48,6 +48,7 @@
         </div>
         <p class="muted">Triggers real ingestion jobs once backend endpoints are available.</p>
         <div id="ingestStatus" class="status-box">No ingestion job running.</div>
+        <div id="ingestedDocuments" class="ingested-docs" aria-live="polite"></div>
       </section>
     </aside>
 
@@ -100,30 +101,23 @@
         <div class="panel-head with-divider split">
           <div>
             <h2>Metrics Dashboard</h2>
-            <p class="muted">Rendered from `/metrics/summary` and `/metrics/history` only.</p>
+            <p class="muted">Rendered from `/metrics/operations` and filtered by operation type.</p>
           </div>
-          <button id="refreshMetrics" type="button">Refresh metrics</button>
+          <div class="metrics-controls">
+            <label for="metricsOperationType" class="sr-only">Operation type filter</label>
+            <select id="metricsOperationType" aria-label="Filter metrics by operation type">
+              <option value="">All operation types</option>
+            </select>
+            <button id="refreshMetrics" type="button">Refresh metrics</button>
+          </div>
         </div>
 
         <div id="metricsCards" class="metrics-cards"></div>
-        <div class="chart-grid">
-          <article class="chart-card">
-            <h3>Latency Over Time</h3>
-            <svg id="latencyChart" viewBox="0 0 600 220" preserveAspectRatio="none"></svg>
-          </article>
-          <article class="chart-card">
-            <h3>Cumulative Cost</h3>
-            <svg id="costChart" viewBox="0 0 600 220" preserveAspectRatio="none"></svg>
-          </article>
-          <article class="chart-card">
-            <h3>Strategy Distribution</h3>
-            <svg id="strategyChart" viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"></svg>
-          </article>
-          <article class="chart-card">
-            <h3>Prompt vs Completion Tokens</h3>
-            <svg id="tokenChart" viewBox="0 0 600 220" preserveAspectRatio="none"></svg>
-          </article>
-        </div>
+        <article id="operationsPanel" class="operations-panel">
+          <h3>Pipeline Operations</h3>
+          <p class="muted">Latest ingest/query stage metrics (including KG generation and aggregation).</p>
+          <div id="operationsList" class="operations-list"></div>
+        </article>
       </section>
     </section>
   </main>

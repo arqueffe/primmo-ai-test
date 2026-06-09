@@ -4,6 +4,7 @@ const state = {
   chatMessages: [],
   graphData: null,
   metricsHistory: [],
+  metricsOperations: [],
   ingestPollId: null,
 };
 
@@ -30,7 +31,9 @@ const graphLegend = document.getElementById("graphLegend");
 const graphCanvas = document.getElementById("graphCanvas");
 const graphDetails = document.getElementById("graphDetails");
 const refreshMetricsBtn = document.getElementById("refreshMetrics");
+const metricsOperationType = document.getElementById("metricsOperationType");
 const metricsCards = document.getElementById("metricsCards");
+const operationsList = document.getElementById("operationsList");
 const openUploadDrawerBtn = document.getElementById("openUploadDrawer");
 const closeUploadDrawerBtn = document.getElementById("closeUploadDrawer");
 const uploadDrawer = document.getElementById("uploadDrawer");
@@ -39,11 +42,7 @@ const uploadDossierId = document.getElementById("uploadDossierId");
 const uploadFile = document.getElementById("uploadFile");
 const uploadFeedback = document.getElementById("uploadFeedback");
 const uploadProgress = document.getElementById("uploadProgress");
-
-const latencyChart = document.getElementById("latencyChart");
-const costChart = document.getElementById("costChart");
-const strategyChart = document.getElementById("strategyChart");
-const tokenChart = document.getElementById("tokenChart");
+const ingestedDocuments = document.getElementById("ingestedDocuments");
 
 const DOSSIER_NODE_COLORS = [
   "#2563eb",
@@ -85,6 +84,87 @@ function safeNumber(value, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function percentile95(values) {
+  if (!Array.isArray(values) || !values.length) {
+    return 0;
+  }
+  const sorted = values
+    .map(v => safeNumber(v, 0))
+    .sort((a, b) => a - b);
+  const index = Math.max(0, Math.ceil(sorted.length * 0.95) - 1);
+  return safeNumber(sorted[index], 0);
+}
+
+function operationTypeKey(op) {
+  if (op?.name) {
+    return String(op.name);
+  }
+  if (op?.category) {
+    return String(op.category);
+  }
+  return "unknown";
+}
+
+function summarizeOperations(operations) {
+  const rows = Array.isArray(operations) ? operations : [];
+  const latencies = rows.map(item => safeNumber(item.latency_ms, 0));
+  const total = rows.length;
+  const avgLatency = total ? latencies.reduce((sum, value) => sum + value, 0) / total : 0;
+  const p95Latency = percentile95(latencies);
+  const totalCost = rows.reduce((sum, item) => sum + safeNumber(item.cost_usd, 0), 0);
+
+  return {
+    total,
+    avg_latency_ms: avgLatency,
+    p95_latency_ms: p95Latency,
+    total_cost_usd: totalCost,
+  };
+}
+
+function updateOperationTypeOptions(operations) {
+  if (!metricsOperationType) {
+    return;
+  }
+
+  const current = metricsOperationType.value;
+  const counts = new Map();
+  (Array.isArray(operations) ? operations : []).forEach(op => {
+    const key = operationTypeKey(op);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+
+  const options = Array.from(counts.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+  metricsOperationType.innerHTML = "";
+
+  const all = document.createElement("option");
+  all.value = "";
+  all.textContent = "All operation types";
+  metricsOperationType.appendChild(all);
+
+  options.forEach(([name, count]) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = `${name} (${count})`;
+    metricsOperationType.appendChild(option);
+  });
+
+  if (current && counts.has(current)) {
+    metricsOperationType.value = current;
+  } else {
+    metricsOperationType.value = "";
+  }
+}
+
+function filteredOperations() {
+  const selected = metricsOperationType ? metricsOperationType.value : "";
+  const operations = Array.isArray(state.metricsOperations) ? state.metricsOperations : [];
+  if (!selected) {
+    return operations;
+  }
+  return operations.filter(op => operationTypeKey(op) === selected);
+}
+
 function apiPath(path) {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return `${API_PREFIX}${normalized}`;
@@ -95,13 +175,17 @@ function normalizeDossiersPayload(data) {
     return data.map(item => {
       if (item && typeof item === "object") {
         if ("id" in item) {
+          const documents = Array.isArray(item.documents)
+            ? item.documents.map(String)
+            : [];
           return {
             id: String(item.id),
             document_count: safeNumber(item.document_count, 0),
+            documents,
           };
         }
       }
-      return { id: String(item), document_count: 0 };
+      return { id: String(item), document_count: 0, documents: [] };
     });
   }
 
@@ -109,10 +193,61 @@ function normalizeDossiersPayload(data) {
     return Object.entries(data).map(([id, docs]) => ({
       id,
       document_count: Array.isArray(docs) ? docs.length : 0,
+      documents: Array.isArray(docs) ? docs.map(String) : [],
     }));
   }
 
   return [];
+}
+
+function renderIngestedDocuments() {
+  if (!ingestedDocuments) {
+    return;
+  }
+
+  ingestedDocuments.innerHTML = "";
+
+  const title = document.createElement("p");
+  title.className = "ingested-docs-title";
+  title.textContent = "Already ingested";
+  ingestedDocuments.appendChild(title);
+
+  if (!state.dossiers.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "No ingested documents yet.";
+    ingestedDocuments.appendChild(empty);
+    return;
+  }
+
+  state.dossiers.forEach(item => {
+    const block = document.createElement("div");
+    block.className = "ingested-dossier";
+
+    const head = document.createElement("p");
+    head.className = "ingested-dossier-head";
+    head.textContent = `Dossier ${item.id} (${safeNumber(item.document_count, 0)})`;
+    block.appendChild(head);
+
+    const docs = Array.isArray(item.documents) ? item.documents : [];
+    if (docs.length === 0) {
+      const none = document.createElement("p");
+      none.className = "muted";
+      none.textContent = "No files listed.";
+      block.appendChild(none);
+    } else {
+      const list = document.createElement("ul");
+      list.className = "ingested-file-list";
+      docs.forEach(name => {
+        const li = document.createElement("li");
+        li.textContent = name;
+        list.appendChild(li);
+      });
+      block.appendChild(list);
+    }
+
+    ingestedDocuments.appendChild(block);
+  });
 }
 
 function normalizeJobStatus(value) {
@@ -203,8 +338,16 @@ async function loadDossiers() {
     const data = await request(apiPath("/dossiers/"));
     state.dossiers = normalizeDossiersPayload(data);
     renderDossierOptions();
+    renderIngestedDocuments();
     setStatus(ingestStatus, `Dossiers loaded: ${state.dossiers.length}`);
   } catch (error) {
+    if (ingestedDocuments) {
+      ingestedDocuments.innerHTML = "";
+      const unavailable = document.createElement("p");
+      unavailable.className = "muted";
+      unavailable.textContent = `Ingested documents unavailable: ${error.message}`;
+      ingestedDocuments.appendChild(unavailable);
+    }
     setStatus(ingestStatus, `Dossiers unavailable: ${error.message}`);
   }
 }
@@ -752,128 +895,16 @@ async function loadGraph() {
   }
 }
 
-function drawLineChart(svg, points, color, formatter = String) {
-  const width = 600;
-  const height = 220;
-  const padX = 36;
-  const padY = 18;
-
-  while (svg.firstChild) svg.firstChild.remove();
-
-  if (!points.length) {
-    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("x", "20");
-    text.setAttribute("y", "30");
-    text.setAttribute("fill", "#64748b");
-    text.textContent = "No history data returned.";
-    svg.appendChild(text);
-    return;
-  }
-
-  const maxY = Math.max(...points.map(p => p.y), 1);
-
-  const path = points
-    .map((p, i) => {
-      const x = padX + (i * (width - padX * 2)) / Math.max(points.length - 1, 1);
-      const y = height - padY - (p.y / maxY) * (height - padY * 2);
-      return `${i === 0 ? "M" : "L"}${x} ${y}`;
-    })
-    .join(" ");
-
-  const axis = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  axis.setAttribute("x1", String(padX));
-  axis.setAttribute("y1", String(height - padY));
-  axis.setAttribute("x2", String(width - padX));
-  axis.setAttribute("y2", String(height - padY));
-  axis.setAttribute("stroke", "#cbd5e1");
-  svg.appendChild(axis);
-
-  const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  pathEl.setAttribute("d", path);
-  pathEl.setAttribute("stroke", color);
-  pathEl.setAttribute("stroke-width", "2.5");
-  pathEl.setAttribute("fill", "none");
-  svg.appendChild(pathEl);
-
-  const latest = points[points.length - 1];
-  const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  label.setAttribute("x", String(width - 160));
-  label.setAttribute("y", "20");
-  label.setAttribute("fill", "#1f2937");
-  label.textContent = `Latest: ${formatter(latest.y)}`;
-  svg.appendChild(label);
-}
-
-function drawStrategyPie(svg, history) {
-  while (svg.firstChild) svg.firstChild.remove();
-
-  if (!history.length) {
-    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("x", "12");
-    text.setAttribute("y", "30");
-    text.setAttribute("fill", "#64748b");
-    text.textContent = "No strategy data returned.";
-    svg.appendChild(text);
-    return;
-  }
-
-  const counts = history.reduce((acc, item) => {
-    const key = item.strategy || "unknown";
-    acc[key] = (acc[key] || 0) + 1;
-    return acc;
-  }, {});
-
-  const entries = Object.entries(counts);
-  const total = entries.reduce((sum, [, value]) => sum + value, 0);
-
-  const colors = ["#2563eb", "#0f766e", "#b45309", "#7c3aed", "#be123c"];
-  let angle = -Math.PI / 2;
-  const cx = 110;
-  const cy = 110;
-  const r = 72;
-
-  entries.forEach(([name, count], idx) => {
-    const ratio = count / total;
-    const next = angle + ratio * Math.PI * 2;
-
-    const x1 = cx + r * Math.cos(angle);
-    const y1 = cy + r * Math.sin(angle);
-    const x2 = cx + r * Math.cos(next);
-    const y2 = cy + r * Math.sin(next);
-    const largeArc = ratio > 0.5 ? 1 : 0;
-
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute(
-      "d",
-      `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`
-    );
-    path.setAttribute("fill", colors[idx % colors.length]);
-    svg.appendChild(path);
-
-    const legend = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    legend.setAttribute("x", "210");
-    legend.setAttribute("y", String(30 + idx * 20));
-    legend.setAttribute("fill", "#1f2937");
-    legend.textContent = `${name}: ${count}`;
-    svg.appendChild(legend);
-
-    angle = next;
-  });
-}
-
-function renderMetricsCards(summary, history) {
-  const totalQueries = safeNumber(summary.total_queries, history.length);
-  const avgLatency = safeNumber(summary.avg_latency_ms, 0);
-  const p95Latency = safeNumber(summary.p95_latency_ms, 0);
-  const totalCost = safeNumber(summary.total_cost_usd, 0);
-  const avgRelevance = summary.avg_relevance_score ?? "n/a";
+function renderMetricsCards(operations) {
+  const selectedType = metricsOperationType ? metricsOperationType.value : "";
+  const stats = summarizeOperations(operations);
+  const totalLabel = selectedType ? `Total operations (${selectedType})` : "Total operations";
 
   const cards = [
-    ["Total queries", totalQueries],
-    ["Average latency", `${avgLatency.toFixed(1)} ms`],
-    ["P95 latency", `${p95Latency.toFixed(1)} ms`],
-    ["Total cost", formatCurrency(totalCost)],
-    ["Average relevance", avgRelevance],
+    [totalLabel, stats.total],
+    ["Average latency", `${safeNumber(stats.avg_latency_ms, 0).toFixed(1)} ms`],
+    ["P95 latency", `${safeNumber(stats.p95_latency_ms, 0).toFixed(1)} ms`],
+    ["Total cost", formatCurrency(stats.total_cost_usd)],
   ];
 
   metricsCards.innerHTML = "";
@@ -895,45 +926,71 @@ function renderMetricsCards(summary, history) {
   });
 }
 
-async function loadMetrics() {
-  let summary = {};
-  let history = [];
-
-  try {
-    summary = await request(apiPath("/metrics/summary"));
-  } catch (error) {
-    console.warn("Metrics summary unavailable", error);
-    summary = {};
+function renderOperations(operations) {
+  if (!operationsList) {
+    return;
   }
 
-  try {
-    const payload = await request(apiPath("/metrics/history"));
-    history = Array.isArray(payload) ? payload : [];
-  } catch (error) {
-    console.warn("Metrics history unavailable", error);
-    history = [];
+  operationsList.innerHTML = "";
+
+  const rows = Array.isArray(operations) ? operations.slice(-30).reverse() : [];
+  if (!rows.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "No operation metrics recorded yet.";
+    operationsList.appendChild(empty);
+    return;
   }
 
-  state.metricsHistory = history;
-  renderMetricsCards(summary, history);
+  rows.forEach(op => {
+    const row = document.createElement("article");
+    row.className = "operation-row";
 
-  const latencyPoints = history.map((h, i) => ({ x: i, y: safeNumber(h.latency_ms, 0) }));
-  drawLineChart(latencyChart, latencyPoints, "#2563eb", v => `${v.toFixed(1)} ms`);
+    const main = document.createElement("div");
+    main.className = "operation-main";
 
-  let runningCost = 0;
-  const costPoints = history.map((h, i) => {
-    runningCost += safeNumber(h.cost_usd, 0);
-    return { x: i, y: runningCost };
+    const name = document.createElement("span");
+    name.className = "operation-name";
+    name.textContent = `${op.name || "operation"}`;
+
+    const meta = document.createElement("span");
+    meta.className = "operation-meta";
+    meta.textContent = `${op.category || "n/a"} | ${(op.model || "no-model")}`;
+
+    main.appendChild(name);
+    main.appendChild(meta);
+
+    const stats = document.createElement("span");
+    stats.className = "operation-stats";
+    const latency = safeNumber(op.latency_ms, 0);
+    const tokens = safeNumber(op.total_tokens, 0);
+    const cost = formatCurrency(op.cost_usd);
+    stats.textContent = `${latency.toFixed(1)} ms | ${tokens} tok | ${cost}`;
+
+    row.appendChild(main);
+    row.appendChild(stats);
+    operationsList.appendChild(row);
   });
-  drawLineChart(costChart, costPoints, "#0f766e", v => `$${v.toFixed(5)}`);
+}
 
-  drawStrategyPie(strategyChart, history);
+async function loadMetrics() {
+  let operations = [];
 
-  const tokenPoints = history.map((h, i) => ({
-    x: i,
-    y: safeNumber(h.prompt_tokens, 0) + safeNumber(h.completion_tokens, 0),
-  }));
-  drawLineChart(tokenChart, tokenPoints, "#b45309", v => `${v.toFixed(0)} tok`);
+  try {
+    const payload = await request(apiPath("/metrics/operations"));
+    operations = Array.isArray(payload) ? payload : [];
+  } catch (error) {
+    console.warn("Metrics operations unavailable", error);
+    operations = [];
+  }
+
+  state.metricsOperations = operations;
+
+  updateOperationTypeOptions(operations);
+
+  const scopedOperations = filteredOperations();
+  renderMetricsCards(scopedOperations);
+  renderOperations(scopedOperations);
 }
 
 function toggleUploadDrawer(open) {
@@ -1065,6 +1122,13 @@ function bindEvents() {
     });
   }
   refreshMetricsBtn.addEventListener("click", loadMetrics);
+  if (metricsOperationType) {
+    metricsOperationType.addEventListener("change", () => {
+      const scopedOperations = filteredOperations();
+      renderMetricsCards(scopedOperations);
+      renderOperations(scopedOperations);
+    });
+  }
 
   graphSearch.addEventListener("input", event => {
     filterGraphBySearch(event.target.value || "");
