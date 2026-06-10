@@ -499,6 +499,90 @@ button:hover {
   overflow: auto;
 }
 
+.judge-panel {
+  min-height: 0;
+}
+
+.judge-review-list {
+  display: grid;
+  gap: 0.7rem;
+  max-height: 56vh;
+  overflow: auto;
+}
+
+.judge-review-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfbfb;
+  padding: 0.8rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.judge-review-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.judge-review-title {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.judge-review-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.judge-review-summary,
+.judge-review-flags,
+.judge-review-section-title {
+  margin: 0;
+}
+
+.judge-review-summary {
+  color: var(--ink);
+}
+
+.judge-review-flags {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.judge-review-section-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.judge-review-points {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.25rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.judge-badge.pass {
+  background: #edf9f0;
+  color: #1f6b34;
+}
+
+.judge-badge.needs-review {
+  background: #fff6df;
+  color: #9a5b00;
+}
+
+.judge-badge.fail,
+.judge-badge.failed {
+  background: #feecec;
+  color: var(--danger);
+}
+
 .operation-row {
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -628,5 +712,9 @@ button:hover {
   .metrics-controls select,
   .metrics-controls button {
     width: 100%;
+  }
+
+  .judge-review-head {
+    flex-direction: column;
   }
 }

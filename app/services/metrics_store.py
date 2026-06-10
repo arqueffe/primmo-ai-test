@@ -245,6 +245,16 @@ class MetricsStore:
             for name, values in operation_latencies_by_name.items()
         }
 
+        judge_operations = [
+            item for item in relevant_operations if str(item.get("name", "")) == "kg_judge"
+        ]
+        judge_latencies = [
+            float(item.get("latency_ms", 0.0) or 0.0) for item in judge_operations
+        ]
+        judge_total_cost = sum(
+            float(item.get("cost_usd", 0.0) or 0.0) for item in judge_operations
+        )
+
         return {
             "total_queries": total_queries,
             "avg_latency_ms": float(avg_latency),
@@ -254,6 +264,12 @@ class MetricsStore:
             "operation_count": len(relevant_operations),
             "operation_avg_latency_ms": operation_avg_latency_ms,
             "operation_total_cost_usd": operation_cost_by_name,
+            "judge_review_count": len(judge_operations),
+            "judge_review_avg_latency_ms": (
+                sum(judge_latencies) / len(judge_latencies) if judge_latencies else 0.0
+            ),
+            "judge_review_p95_latency_ms": self._p95(judge_latencies),
+            "judge_review_total_cost_usd": float(judge_total_cost),
         }
 
     def history(self) -> list[dict]:

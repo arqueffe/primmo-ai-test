@@ -27,7 +27,7 @@ async def create_ingest_job(
         metrics_store=metrics_store,
         kg=kg,
     )
-    return IngestJobResponse(job_id=job.job_id, status=job.status)
+    return job
     
 @router.get("/status/{job_id}")
 def get_ingest_status(job_id: str) -> IngestJobResponse:

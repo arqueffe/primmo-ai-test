@@ -31,6 +31,7 @@
         <button class="tab-btn active" data-tab="chat" role="tab" aria-selected="true">Chat</button>
         <button class="tab-btn" data-tab="graph" role="tab" aria-selected="false">Knowledge Graph</button>
         <button class="tab-btn" data-tab="metrics" role="tab" aria-selected="false">Metrics</button>
+        <button class="tab-btn" data-tab="judge" role="tab" aria-selected="false">Judge Reviews</button>
       </nav>
 
       <section class="block">
@@ -117,6 +118,33 @@
           <h3>Pipeline Operations</h3>
           <p class="muted">Latest ingest/query stage metrics (including KG generation and aggregation).</p>
           <div id="operationsList" class="operations-list"></div>
+        </article>
+      </section>
+
+      <section id="tab-judge" class="tab-panel" role="tabpanel">
+        <div class="panel-head with-divider split">
+          <div>
+            <h2>LLM Judge Reviews</h2>
+            <p class="muted">Latest `kg_judge` reviews from ingestion operations, optionally scoped by dossier.</p>
+          </div>
+          <div class="metrics-controls">
+            <label for="judgeVerdictFilter" class="sr-only">Judge verdict filter</label>
+            <select id="judgeVerdictFilter" aria-label="Filter judge reviews by verdict">
+              <option value="">All verdicts</option>
+              <option value="pass">Pass</option>
+              <option value="needs_review">Needs review</option>
+              <option value="fail">Fail</option>
+              <option value="failed">Judge error</option>
+            </select>
+            <button id="refreshJudgeReviews" type="button">Refresh reviews</button>
+          </div>
+        </div>
+
+        <div id="judgeSummaryCards" class="metrics-cards"></div>
+        <article class="operations-panel judge-panel">
+          <h3>Review Timeline</h3>
+          <p class="muted">Each card shows the verdict, score, latency, and the judge's recorded notes for a document ingestion.</p>
+          <div id="judgeReviewsList" class="judge-review-list"></div>
         </article>
       </section>
     </section>

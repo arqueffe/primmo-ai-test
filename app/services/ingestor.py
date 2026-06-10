@@ -7,6 +7,7 @@ from fastapi import UploadFile
 
 from app.services.graph_builder import GraphBuilder
 from app.services.document_store import DocumentStore
+from app.services.kg_judge import KgJudgeEvaluation, KgJudgeService
 from app.services.graph_store import GraphStore
 from app.services.metrics_store import MetricsStore
 from app.services.ocr_extractor import OCRExtractor
@@ -22,6 +23,8 @@ class IngestJobResponse(BaseModel):
     job_id: str
     status: JobStatus
     error_message: str | None = None
+    kg_judge: KgJudgeEvaluation | None = None
+    kg_judge_error: str | None = None
 
 
 class Ingestor:
@@ -43,7 +46,6 @@ class Ingestor:
             job_id=job_id, status=JobStatus.IN_PROGRESS
         )
 
-        parse_start = perf_counter()
         # Persist uploaded source document for reload across server restarts.
         try:
             saved_path = document_store.save_upload(file=file, dossier_id=dossier_id)
@@ -55,7 +57,6 @@ class Ingestor:
             parsed_document = OCRExtractor.extract_text_from_file(saved_path, dossier_id)
         except Exception as e:
             return self.fail_job(job_id, f"Error extracting text from OCR: {e}")
-        parse_latency_ms = (perf_counter() - parse_start) * 1000
 
         # Build the graph from the document, potential failure from API call or more
         kg.reset_token_usage()
@@ -78,6 +79,52 @@ class Ingestor:
                 "file_name": parsed_document.file_name,
             },
         )
+
+        judge_evaluation: KgJudgeEvaluation | None = None
+        judge_error_message: str | None = None
+        judge_start = perf_counter()
+        try:
+            judge_result = KgJudgeService.evaluate(
+                document=parsed_document,
+                graph=document_graph,
+                model=kg.model,
+                api_key=kg.api_key,
+            )
+            judge_evaluation = judge_result.evaluation
+            metrics_store.record_operation(
+                name="kg_judge",
+                category="ingest",
+                latency_ms=judge_result.latency_ms,
+                token_usage=judge_result.token_usage,
+                model=judge_result.model,
+                metadata={
+                    "job_id": job_id,
+                    "dossier_id": dossier_id,
+                    "file_name": parsed_document.file_name,
+                    "verdict": judge_evaluation.verdict,
+                    "score": judge_evaluation.score,
+                    "summary": judge_evaluation.summary,
+                    "strengths": list(judge_evaluation.strengths),
+                    "issues": list(judge_evaluation.issues),
+                    "document_text_truncated": judge_evaluation.document_text_truncated,
+                    "graph_truncated": judge_evaluation.graph_truncated,
+                },
+            )
+        except Exception as e:
+            judge_error_message = str(e)
+            metrics_store.record_operation(
+                name="kg_judge",
+                category="ingest",
+                latency_ms=(perf_counter() - judge_start) * 1000,
+                model=kg.model,
+                metadata={
+                    "job_id": job_id,
+                    "dossier_id": dossier_id,
+                    "file_name": parsed_document.file_name,
+                    "status": "failed",
+                    "error_message": judge_error_message,
+                },
+            )
 
         # Update per-dossier graph first, then refresh global cross-dossier view.
         kg.reset_token_usage()
@@ -128,7 +175,11 @@ class Ingestor:
                 "file_name": parsed_document.file_name,
             },
         )
-        return self.complete_job(job_id)
+        return self.complete_job(
+            job_id,
+            kg_judge=judge_evaluation,
+            kg_judge_error=judge_error_message,
+        )
 
     def fail_job(self, job_id: str, error_message: str):
         if job_id in self.job_store:
@@ -139,10 +190,18 @@ class Ingestor:
             raise ValueError(f"Job ID {job_id} not found.")
         return self.job_store[job_id]
 
-    def complete_job(self, job_id: str):
+    def complete_job(
+        self,
+        job_id: str,
+        kg_judge: KgJudgeEvaluation | None = None,
+        kg_judge_error: str | None = None,
+    ):
         if job_id in self.job_store:
             self.job_store[job_id] = IngestJobResponse(
-                job_id=job_id, status=JobStatus.COMPLETED
+                job_id=job_id,
+                status=JobStatus.COMPLETED,
+                kg_judge=kg_judge,
+                kg_judge_error=kg_judge_error,
             )
         else:
             raise ValueError(f"Job ID {job_id} not found.")

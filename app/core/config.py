@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = "Primmo FastAPI Template"
+    app_name: str = "Primmo App"
     app_version: str = "0.1.0"
     api_prefix: str = "/api/v1"
     uploads_dir: str = "data/uploads"

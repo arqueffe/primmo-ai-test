@@ -15,6 +15,7 @@ const tabPanels = {
   chat: document.getElementById("tab-chat"),
   graph: document.getElementById("tab-graph"),
   metrics: document.getElementById("tab-metrics"),
+  judge: document.getElementById("tab-judge"),
 };
 
 const apiInput = document.getElementById("apiBaseUrl");
@@ -34,6 +35,10 @@ const refreshMetricsBtn = document.getElementById("refreshMetrics");
 const metricsOperationType = document.getElementById("metricsOperationType");
 const metricsCards = document.getElementById("metricsCards");
 const operationsList = document.getElementById("operationsList");
+const refreshJudgeReviewsBtn = document.getElementById("refreshJudgeReviews");
+const judgeVerdictFilter = document.getElementById("judgeVerdictFilter");
+const judgeSummaryCards = document.getElementById("judgeSummaryCards");
+const judgeReviewsList = document.getElementById("judgeReviewsList");
 const openUploadDrawerBtn = document.getElementById("openUploadDrawer");
 const closeUploadDrawerBtn = document.getElementById("closeUploadDrawer");
 const uploadDrawer = document.getElementById("uploadDrawer");
@@ -304,6 +309,225 @@ function setActiveTab(tabName) {
   if (tabName === "graph") {
     loadGraph();
   }
+  if (tabName === "judge") {
+    renderJudgeViews();
+  }
+}
+
+function judgeMetadata(op) {
+  return op?.metadata && typeof op.metadata === "object" ? op.metadata : {};
+}
+
+function judgeVerdict(op) {
+  const metadata = judgeMetadata(op);
+  if (metadata.status === "failed") {
+    return "failed";
+  }
+  return String(metadata.verdict || "unknown");
+}
+
+function judgeReviewOperations() {
+  const dossierId = currentDossierId();
+  const operations = Array.isArray(state.metricsOperations) ? state.metricsOperations : [];
+  return operations.filter(op => {
+    if (operationTypeKey(op) !== "kg_judge") {
+      return false;
+    }
+    if (!dossierId) {
+      return true;
+    }
+    return String(judgeMetadata(op).dossier_id || "") === dossierId;
+  });
+}
+
+function filteredJudgeReviews() {
+  const selectedVerdict = judgeVerdictFilter ? judgeVerdictFilter.value : "";
+  const reviews = judgeReviewOperations();
+  if (!selectedVerdict) {
+    return reviews;
+  }
+  return reviews.filter(op => judgeVerdict(op) === selectedVerdict);
+}
+
+function formatTimestamp(value) {
+  if (!value) {
+    return "Unknown time";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value);
+  }
+  return parsed.toLocaleString();
+}
+
+function renderJudgeSummary(reviews) {
+  if (!judgeSummaryCards) {
+    return;
+  }
+
+  const rows = Array.isArray(reviews) ? reviews : [];
+  const successful = rows.filter(op => judgeVerdict(op) !== "failed");
+  const avgScore = successful.length
+    ? successful.reduce((sum, op) => sum + safeNumber(judgeMetadata(op).score, 0), 0) / successful.length
+    : 0;
+  const passCount = rows.filter(op => judgeVerdict(op) === "pass").length;
+  const attentionCount = rows.filter(op => {
+    const verdict = judgeVerdict(op);
+    return verdict === "needs_review" || verdict === "fail" || verdict === "failed";
+  }).length;
+
+  const cards = [
+    ["Total reviews", rows.length],
+    ["Average score", successful.length ? avgScore.toFixed(2) : "n/a"],
+    ["Passed", passCount],
+    ["Needs attention", attentionCount],
+  ];
+
+  judgeSummaryCards.innerHTML = "";
+  cards.forEach(([label, value]) => {
+    const card = document.createElement("article");
+    card.className = "metric-card";
+
+    const p1 = document.createElement("p");
+    p1.className = "metric-label";
+    p1.textContent = label;
+
+    const p2 = document.createElement("p");
+    p2.className = "metric-value";
+    p2.textContent = String(value);
+
+    card.appendChild(p1);
+    card.appendChild(p2);
+    judgeSummaryCards.appendChild(card);
+  });
+}
+
+function renderJudgeReviews(reviews) {
+  if (!judgeReviewsList) {
+    return;
+  }
+
+  judgeReviewsList.innerHTML = "";
+
+  const rows = Array.isArray(reviews) ? reviews.slice().reverse() : [];
+  if (!rows.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "No judge reviews recorded yet for the current filters.";
+    judgeReviewsList.appendChild(empty);
+    return;
+  }
+
+  rows.forEach(op => {
+    const metadata = judgeMetadata(op);
+    const verdict = judgeVerdict(op);
+    const review = document.createElement("article");
+    review.className = "judge-review-card";
+
+    const head = document.createElement("div");
+    head.className = "judge-review-head";
+
+    const titleWrap = document.createElement("div");
+    titleWrap.className = "judge-review-title";
+
+    const title = document.createElement("strong");
+    title.textContent = metadata.file_name || `Dossier ${metadata.dossier_id || "n/a"}`;
+
+    const meta = document.createElement("span");
+    meta.className = "operation-meta";
+    meta.textContent = `${formatTimestamp(op.ts)} | dossier ${metadata.dossier_id || "n/a"} | ${op.model || "no-model"}`;
+
+    titleWrap.appendChild(title);
+    titleWrap.appendChild(meta);
+
+    const badges = document.createElement("div");
+    badges.className = "judge-review-badges";
+
+    const verdictBadge = document.createElement("span");
+    verdictBadge.className = `pill judge-badge ${verdict.replaceAll("_", "-")}`;
+    verdictBadge.textContent = verdict.replaceAll("_", " ");
+    badges.appendChild(verdictBadge);
+
+    if (metadata.score !== undefined && metadata.score !== null && verdict !== "failed") {
+      const scoreBadge = document.createElement("span");
+      scoreBadge.className = "pill metrics";
+      scoreBadge.textContent = `score ${safeNumber(metadata.score, 0).toFixed(2)}`;
+      badges.appendChild(scoreBadge);
+    }
+
+    head.appendChild(titleWrap);
+    head.appendChild(badges);
+    review.appendChild(head);
+
+    const summary = document.createElement("p");
+    summary.className = "judge-review-summary";
+    summary.textContent = metadata.summary || metadata.error_message || "No review summary recorded.";
+    review.appendChild(summary);
+
+    const stats = document.createElement("p");
+    stats.className = "operation-meta";
+    stats.textContent = `${safeNumber(op.latency_ms, 0).toFixed(1)} ms | ${safeNumber(op.total_tokens, 0)} tok | ${formatCurrency(op.cost_usd)}`;
+    review.appendChild(stats);
+
+    const flags = [];
+    if (metadata.job_id) {
+      flags.push(`job ${metadata.job_id}`);
+    }
+    if (metadata.document_text_truncated) {
+      flags.push("document truncated");
+    }
+    if (metadata.graph_truncated) {
+      flags.push("graph truncated");
+    }
+    if (flags.length) {
+      const flagLine = document.createElement("p");
+      flagLine.className = "judge-review-flags";
+      flagLine.textContent = flags.join(" | ");
+      review.appendChild(flagLine);
+    }
+
+    const strengths = Array.isArray(metadata.strengths) ? metadata.strengths : [];
+    if (strengths.length) {
+      const strengthsTitle = document.createElement("p");
+      strengthsTitle.className = "judge-review-section-title";
+      strengthsTitle.textContent = "Strengths";
+      review.appendChild(strengthsTitle);
+
+      const strengthsList = document.createElement("ul");
+      strengthsList.className = "judge-review-points";
+      strengths.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = String(item);
+        strengthsList.appendChild(li);
+      });
+      review.appendChild(strengthsList);
+    }
+
+    const issues = Array.isArray(metadata.issues) ? metadata.issues : [];
+    if (issues.length) {
+      const issuesTitle = document.createElement("p");
+      issuesTitle.className = "judge-review-section-title";
+      issuesTitle.textContent = "Issues";
+      review.appendChild(issuesTitle);
+
+      const issuesList = document.createElement("ul");
+      issuesList.className = "judge-review-points";
+      issues.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = String(item);
+        issuesList.appendChild(li);
+      });
+      review.appendChild(issuesList);
+    }
+
+    judgeReviewsList.appendChild(review);
+  });
+}
+
+function renderJudgeViews() {
+  const reviews = filteredJudgeReviews();
+  renderJudgeSummary(reviews);
+  renderJudgeReviews(reviews);
 }
 
 function renderDossierOptions() {
@@ -899,6 +1123,10 @@ function renderMetricsCards(operations) {
   const selectedType = metricsOperationType ? metricsOperationType.value : "";
   const stats = summarizeOperations(operations);
   const totalLabel = selectedType ? `Total operations (${selectedType})` : "Total operations";
+  const judgeOperations = (Array.isArray(operations) ? operations : []).filter(
+    op => String(op?.name || "") === "kg_judge"
+  );
+  const judgeStats = summarizeOperations(judgeOperations);
 
   const cards = [
     [totalLabel, stats.total],
@@ -906,6 +1134,14 @@ function renderMetricsCards(operations) {
     ["P95 latency", `${safeNumber(stats.p95_latency_ms, 0).toFixed(1)} ms`],
     ["Total cost", formatCurrency(stats.total_cost_usd)],
   ];
+
+  if (!selectedType && judgeOperations.length) {
+    cards.push(
+      ["Judge reviews", judgeStats.total],
+      ["Judge avg latency", `${safeNumber(judgeStats.avg_latency_ms, 0).toFixed(1)} ms`],
+      ["Judge total cost", formatCurrency(judgeStats.total_cost_usd)],
+    );
+  }
 
   metricsCards.innerHTML = "";
   cards.forEach(([label, value]) => {
@@ -991,6 +1227,7 @@ async function loadMetrics() {
   const scopedOperations = filteredOperations();
   renderMetricsCards(scopedOperations);
   renderOperations(scopedOperations);
+  renderJudgeViews();
 }
 
 function toggleUploadDrawer(open) {
@@ -1010,6 +1247,21 @@ function stopIngestPolling() {
   }
 }
 
+function formatJudgeResult(statusPayload) {
+  const judge = statusPayload?.kg_judge;
+  if (!judge || typeof judge !== "object") {
+    if (statusPayload?.kg_judge_error) {
+      return `Judge unavailable: ${statusPayload.kg_judge_error}`;
+    }
+    return "";
+  }
+
+  const verdict = String(judge.verdict || "needs_review").replaceAll("_", " ");
+  const score = safeNumber(judge.score, 0);
+  const summary = judge.summary ? String(judge.summary) : "No summary returned.";
+  return `KG judge: ${verdict} (${score.toFixed(2)}). ${summary}`;
+}
+
 function renderIngestResult(statusPayload) {
   if (!statusPayload || typeof statusPayload !== "object") {
     return;
@@ -1018,11 +1270,14 @@ function renderIngestResult(statusPayload) {
   const status = normalizeJobStatus(statusPayload.status);
 
   if (status === "completed") {
-    setStatus(uploadFeedback, `Completed. Job ${statusPayload.job_id || "n/a"}.`);
+    const judgeMessage = formatJudgeResult(statusPayload);
+    const completedMessage = `Completed. Job ${statusPayload.job_id || "n/a"}.`;
+    setStatus(uploadFeedback, judgeMessage ? `${completedMessage} ${judgeMessage}` : completedMessage);
     setStatus(ingestStatus, "Ingestion completed.");
     setUploadProgress(100);
     stopIngestPolling();
     loadDossiers();
+    loadMetrics();
     return;
   }
 
@@ -1111,6 +1366,7 @@ function bindEvents() {
     if (tabPanels.graph.classList.contains("active")) {
       loadGraph();
     }
+    renderJudgeViews();
   });
   chatForm.addEventListener("submit", submitQuestion);
   loadGraphBtn.addEventListener("click", loadGraph);
@@ -1128,6 +1384,12 @@ function bindEvents() {
       renderMetricsCards(scopedOperations);
       renderOperations(scopedOperations);
     });
+  }
+  if (refreshJudgeReviewsBtn) {
+    refreshJudgeReviewsBtn.addEventListener("click", loadMetrics);
+  }
+  if (judgeVerdictFilter) {
+    judgeVerdictFilter.addEventListener("change", renderJudgeViews);
   }
 
   graphSearch.addEventListener("input", event => {
