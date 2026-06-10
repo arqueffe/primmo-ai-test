@@ -6,10 +6,9 @@ from pathlib import Path
 
 class MetricsStore:
     MODEL_PRICING_PER_1M = {
-        "openai/gpt-4o": (5.0, 15.0),
-        "gpt-4o": (5.0, 15.0),
-        "openai/gpt-4o-mini": (0.15, 0.60),
-        "gpt-4o-mini": (0.15, 0.60),
+        "openai/gpt-4o": (2.5, 10.0),
+        "gpt-4o": (2.5, 10.0),
+        "gpt-5.4-mini": (0.75, 4.5),
     }
 
     def __init__(self, state_file: str | Path | None = None):

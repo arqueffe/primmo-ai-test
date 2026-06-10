@@ -117,7 +117,6 @@ class GraphStore:
         graph.edges.update(relation_edges)
 
         normalized_metadata = GraphStore._normalize_metadata_values(graph.entity_metadata)
-        GraphStore._propagate_metadata_across_relations(graph, normalized_metadata)
         GraphStore._fill_missing_metadata(
             entities=graph.entities,
             metadata=normalized_metadata,
@@ -146,27 +145,6 @@ class GraphStore:
             entity: set(values) if values else set()
             for entity, values in metadata.items()
         }
-
-    @staticmethod
-    def _propagate_metadata_across_relations(
-        graph: Graph,
-        metadata: dict[str, set[str]],
-    ) -> None:
-        changed = True
-        while changed:
-            changed = False
-            for subject, _, obj in graph.relations:
-                subject_values = metadata.get(subject, set())
-                object_values = metadata.get(obj, set())
-                union_values = subject_values | object_values
-                if not union_values:
-                    continue
-                if union_values != subject_values:
-                    metadata[subject] = set(union_values)
-                    changed = True
-                if union_values != object_values:
-                    metadata[obj] = set(union_values)
-                    changed = True
 
     @staticmethod
     def _fill_missing_metadata(

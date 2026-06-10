@@ -20,6 +20,7 @@ def create_app() -> FastAPI:
     uploads_dir = repo_root / settings.uploads_dir
     graph_store_state_file = repo_root / settings.graph_store_state_file
     metrics_store_state_file = repo_root / settings.metrics_store_state_file
+    agent_traces_dir = repo_root / settings.agent_traces_dir
 
     document_store = DocumentStore(root_dir=uploads_dir)
     graph_store = GraphStore(state_file=graph_store_state_file)
@@ -53,6 +54,8 @@ def create_app() -> FastAPI:
     app.state.metrics_store = metrics_store
     app.state.kg = kg
     app.state.api_key = api_key
+    app.state.agent_tracing_enabled = settings.agent_tracing_enabled
+    app.state.agent_traces_dir = agent_traces_dir
     
     return app
 

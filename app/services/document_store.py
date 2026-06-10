@@ -48,3 +48,20 @@ class DocumentStore:
             })
 
         return dossiers
+
+    def list_document_paths(self, dossier_id: str | None = None) -> list[tuple[str, Path]]:
+        dossiers = self.list_dossiers()
+        document_paths: list[tuple[str, Path]] = []
+
+        for dossier in dossiers:
+            current_dossier_id = str(dossier.get("id", "")).strip()
+            if dossier_id is not None and current_dossier_id != str(dossier_id).strip():
+                continue
+
+            dossier_dir = self.root_dir / current_dossier_id
+            for document_name in dossier.get("documents", []):
+                document_path = dossier_dir / str(document_name)
+                if document_path.is_file():
+                    document_paths.append((current_dossier_id, document_path))
+
+        return document_paths

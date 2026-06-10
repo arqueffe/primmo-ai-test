@@ -1,19 +1,33 @@
+VENV := .venv
+
+ifeq ($(OS),Windows_NT)
 SHELL := powershell.exe
 .SHELLFLAGS := -NoProfile -ExecutionPolicy Bypass -Command
-
-VENV := .venv
 PYTHON := $(VENV)\Scripts\python.exe
-PIP := $(VENV)\Scripts\pip.exe
-UVICORN := $(VENV)\Scripts\uvicorn.exe
+BOOTSTRAP_PYTHON := python
+KG_GEN_PATH := .\kg-gen
+VENV_CREATE := if (!(Test-Path "$(PYTHON)")) { $(BOOTSTRAP_PYTHON) -m venv "$(VENV)" }
+RUN_APP := & "$(PYTHON)" -m uvicorn app.main:app --reload
+else
+SHELL := /bin/sh
+.SHELLFLAGS := -ec
+PYTHON := $(VENV)/bin/python
+BOOTSTRAP_PYTHON := python3
+KG_GEN_PATH := ./kg-gen
+VENV_CREATE := test -x "$(PYTHON)" || $(BOOTSTRAP_PYTHON) -m venv "$(VENV)"
+RUN_APP := "$(PYTHON)" -m uvicorn app.main:app --reload
+endif
 
-.PHONY: setup run
+.PHONY: setup run serve
 
 setup:
-	if (!(Test-Path "$(PYTHON)")) { python -m venv "$(VENV)" }
-	& "$(PYTHON)" -m pip install --upgrade pip
-	& "$(PIP)" install -r app/requirements.txt
-	& "$(PIP)" install -e .\kg-gen
+	$(VENV_CREATE)
+	"$(PYTHON)" -m pip install --upgrade pip
+	"$(PYTHON)" -m pip install -r app/requirements.txt
+	"$(PYTHON)" -m pip install -e "$(KG_GEN_PATH)"
 
 run: setup
-	$$env:PYTHONPATH = "$$PWD;$$PWD\app"
-	& "$(UVICORN)" app.main:app --reload
+	$(RUN_APP)
+
+serve:
+	$(RUN_APP)

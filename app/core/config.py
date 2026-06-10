@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     uploads_dir: str = "data/uploads"
     graph_store_state_file: str = "data/graph_store_state.json"
     metrics_store_state_file: str = "data/metrics_store_state.json"
+    agent_tracing_enabled: bool = True
+    agent_traces_dir: str = "data/traces"
 
     model_config = SettingsConfigDict(
         env_file=".env",

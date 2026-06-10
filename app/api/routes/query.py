@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request
 from app.services.graph_query import CHAT_MODEL, GraphQuery
 
 router = APIRouter()
+QUERY_STRATEGY = "KG_AGENT"
 
 
 class QueryRequest(BaseModel):
@@ -25,15 +26,25 @@ async def _run_query(
     dossier_id: str | None = None,
 ) -> QueryResponse:
     graph_store = request.app.state.graph_store
+    document_store = request.app.state.document_store
     metrics_store = request.app.state.metrics_store
     kg = request.app.state.kg
     api_key = request.app.state.api_key
+    trace_enabled = bool(getattr(request.app.state, "agent_tracing_enabled", False))
+    trace_dir = getattr(request.app.state, "agent_traces_dir", None)
     result = await GraphQuery.query_graph(
         query=question,
         graph_store=graph_store,
+        document_store=document_store,
         kg=kg,
         api_key=api_key,
-        dossier_id=dossier_id,
+        trace_enabled=trace_enabled,
+        trace_dir=trace_dir,
+        trace_context={
+            "request_method": request.method,
+            "request_path": str(request.url.path),
+            "client_host": request.client.host if request.client else None,
+        },
     )
 
     if result is None:
@@ -43,7 +54,7 @@ async def _run_query(
             answer = "No graph loaded yet. Ingest documents first."
         return QueryResponse(
             answer=answer,
-            strategy="GRAPH_LOOKUP",
+            strategy=QUERY_STRATEGY,
             sources=[],
             metrics={},
             ocr_warnings=[],
@@ -51,15 +62,15 @@ async def _run_query(
 
     metrics_store.record_query_execution(
         question=question,
-        dossier_id=dossier_id,
-        strategy="GRAPH_LOOKUP",
+        dossier_id=None,
+        strategy=QUERY_STRATEGY,
         model=CHAT_MODEL,
         metrics=result.metrics,
     )
 
     return QueryResponse(
         answer=result.answer,
-        strategy="GRAPH_LOOKUP",
+        strategy=QUERY_STRATEGY,
         sources=[],
         metrics=result.metrics,
         ocr_warnings=[],
